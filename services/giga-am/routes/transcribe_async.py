@@ -36,7 +36,10 @@ async def process_task_background(task_id: str):
     if not task:
         logger.error(f"Task {task_id} not found for background processing")
         return
-    
+    if task.audio_data is None:
+        logger.error(f"Task {task_id} has no audio data")
+        return
+
     try:
         logger.info(f"Starting background processing for task {task_id}")
         

@@ -5,7 +5,7 @@ import asyncio
 import json
 import logging
 import uuid
-from typing import Dict, Any, Optional, Set, List
+from typing import Dict, Any, Set, List
 
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
@@ -63,7 +63,10 @@ async def process_diarized_task_background(task_id: str, segments: List[Dict[str
     if not task:
         logger.error(f"Task {task_id} not found for background processing")
         return
-    
+    if task.audio_data is None:
+        logger.error(f"Task {task_id} has no audio data")
+        return
+
     try:
         logger.info(f"Starting background processing for diarized task {task_id}")
         
