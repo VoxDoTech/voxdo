@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from config import settings
 from utils.logger import setup_logging
 from utils.error_handlers import setup_exception_handlers
-from utils.cache import setup_cache_cleanup
 from services.task_manager import task_manager
 
 # Import routers
@@ -44,9 +43,6 @@ app = FastAPI(
 
 # Настройка обработчиков исключений
 setup_exception_handlers(app)
-
-# Настройка кэша
-setup_cache_cleanup()
 
 # Регистрация роутеров
 app.include_router(health_router, prefix="/api", tags=["health"])

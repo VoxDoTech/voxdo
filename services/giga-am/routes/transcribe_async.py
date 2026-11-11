@@ -4,8 +4,9 @@
 import asyncio
 import logging
 import uuid
-from typing import Optional, Set
+from typing import Any, Dict, Optional, Set
 
+import httpx
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
@@ -23,6 +24,36 @@ pipeline_service = PipelineService()
 
 # Set для отслеживания background tasks
 BACKGROUND_TASKS: Set[asyncio.Task] = set()
+
+
+async def send_webhook_callback(
+    callback_url: str,
+    task_id: str,
+    status: str,
+    result: Optional[Dict[str, Any]] = None,
+    error: Optional[str] = None,
+) -> bool:
+    """Отправка результата задачи на webhook URL."""
+    payload: Dict[str, Any] = {"task_id": task_id, "status": status}
+    if result is not None:
+        payload["result"] = result
+    if error is not None:
+        payload["error"] = error
+
+    try:
+        async with httpx.AsyncClient(timeout=settings.callback_timeout) as client:
+            response = await client.post(callback_url, json=payload)
+        if response.status_code < 300:
+            logger.info(f"Webhook callback delivered for task {task_id}")
+            return True
+        logger.error(
+            f"Webhook callback failed for task {task_id}: "
+            f"{response.status_code} {response.text}"
+        )
+        return False
+    except Exception as e:
+        logger.error(f"Webhook callback error for task {task_id}: {e}", exc_info=True)
+        return False
 
 
 async def process_task_background(task_id: str):
@@ -54,10 +85,15 @@ async def process_task_background(task_id: str):
         
         # Обновляем статус на completed
         task_manager.update_status(task_id, TaskStatus.COMPLETED, result=result)
-        
+
         # Отправляем событие в Inngest
         await send_inngest_event(task_id, "completed", result=result)
-        
+
+        # Отправляем webhook callback если указан
+        callback_url = task.options.get("callback_url")
+        if callback_url:
+            await send_webhook_callback(callback_url, task_id, "completed", result=result)
+
         logger.info(f"Task {task_id} completed successfully")
         
     except Exception as e:
@@ -72,6 +108,11 @@ async def process_task_background(task_id: str):
         
         # Отправляем событие в Inngest
         await send_inngest_event(task_id, "failed", error=str(e))
+
+        # Отправляем webhook callback если указан
+        callback_url = task.options.get("callback_url")
+        if callback_url:
+            await send_webhook_callback(callback_url, task_id, "failed", error=str(e))
 
 
 @router.post("/transcribe-async")
@@ -94,11 +135,12 @@ async def transcribe_async(
     Returns:
         JSONResponse с task_id
     """
-    # Проверяем конфигурацию Inngest перед созданием задачи
-    if not settings.inngest_event_key or not settings.inngest_api_url:
+    # Нужен хотя бы один способ доставки результата: Inngest или webhook
+    inngest_configured = bool(settings.inngest_event_key and settings.inngest_api_url)
+    if not inngest_configured and not callback_url:
         raise HTTPException(
             status_code=503,
-            detail="Inngest callback not configured. Set INNGEST_EVENT_KEY and INNGEST_API_URL to use async mode."
+            detail="No result delivery configured. Set INNGEST_EVENT_KEY/INNGEST_API_URL or pass callback_url."
         )
     
     request_id = f"async-req-{uuid.uuid4().hex[:12]}"
@@ -110,7 +152,11 @@ async def transcribe_async(
         audio_data = await read_upload_with_limit(file)
         
         # Создаем задачу
-        task = task_manager.create_task(filename, audio_data)
+        task = task_manager.create_task(
+            filename,
+            audio_data,
+            options={"callback_url": callback_url} if callback_url else None,
+        )
         
         # Запускаем фоновую обработку с отслеживанием
         background_task = asyncio.create_task(process_task_background(task.task_id))
