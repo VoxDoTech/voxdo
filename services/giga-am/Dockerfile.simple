@@ -1,0 +1,44 @@
+FROM jrottenberg/ffmpeg:7.1-ubuntu2404
+
+# Переопределяем ENTRYPOINT
+ENTRYPOINT []
+
+# Установка Python 3.12
+RUN apt-get update && \
+    apt-get install -y python3.12 python3-pip git curl && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# В базовом образе может быть включен strict hash-check для pip,
+# что ломает установку плавающих зависимостей из requirements.txt.
+ENV PIP_REQUIRE_HASHES=0
+
+ARG GIGAAM_REV=7447938d791c4f3e643386ee22c33777004293a5
+
+# Копирование зависимостей
+COPY requirements.txt .
+
+# Установка Python зависимостей.
+# Ставим gigaam отдельно без зависимостей, чтобы не упираться в hash-lock внутри
+# транзитивных требований самого пакета.
+RUN test -n "$GIGAAM_REV" && \
+    python3 -c "from pathlib import Path; p=Path('requirements.txt'); lines=p.read_text().splitlines(); p.with_name('requirements.base.txt').write_text('\n'.join([l for l in lines if l.strip() and not l.strip().startswith('gigaam @')]) + '\n')" && \
+    pip3 install --no-cache-dir --break-system-packages \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    -r requirements.base.txt && \
+    pip3 install --no-cache-dir --break-system-packages --no-deps \
+    "gigaam @ git+https://github.com/salute-developers/GigaAM.git@${GIGAAM_REV}"
+
+# Копирование кода
+COPY . .
+
+# Создание директорий
+RUN mkdir -p /app/temp /app/logs
+
+EXPOSE 7860
+
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:7860/api/health || exit 1
+
+CMD ["python3", "app.py"]

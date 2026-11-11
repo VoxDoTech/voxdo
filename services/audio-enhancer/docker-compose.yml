@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  audio-enhancer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: audio-enhancer:latest
+    container_name: audio-enhancer
+    ports:
+      - "7860:7860"
+    environment:
+      # Настройки приложения
+      - APP_NAME=${APP_NAME:-Audio Enhancer}
+      - DEBUG=${DEBUG:-false}
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${PORT:-7860}
+
+      # Ограничения файлов
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-83886080}
+      - MAX_AUDIO_SECONDS=${MAX_AUDIO_SECONDS:-14400}
+
+      # Логирование
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # HuggingFace токен для pyannote (опционально)
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      # Опционально: монтирование для кэша моделей
+      - model-cache:/tmp/torch_cache
+      - transformers-cache:/tmp/transformers_cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  model-cache:
+  transformers-cache:

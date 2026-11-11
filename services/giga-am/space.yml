@@ -1,0 +1,21 @@
+# HuggingFace Spaces Configuration
+title: "GigaAM - Распознавание русской речи"
+emoji: "🎤"
+colorFrom: "blue"
+colorTo: "purple"
+sdk: "docker"
+pinned: false
+license: "mit"
+app_port: 7860
+sleep_time: 900
+
+# Pro-ориентированные рекомендации
+suggested_hardware: "t4-small"      # оптимально для ASR по цене/скорости
+suggested_storage: "small"          # если модели тянутся из Hub на старте
+startup_duration_timeout: "1h"      # чтобы cold start не падал на загрузке
+short_description: "Онлайн ASR для русского языка на базе GigaAM"
+tags:
+  - automatic-speech-recognition
+  - russian
+  - audio
+  - docker

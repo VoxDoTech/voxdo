@@ -1,0 +1,36 @@
+# Core dependencies
+fastapi>=0.162.4
+uvicorn[standard]>=0.54.0
+python-multipart>=0.0.33
+
+# Audio processing
+# torch/torchaudio/onnxruntime/pyannote/numpy привязаны к версиям,
+# которые требует сам GigaAM (см. его pyproject.toml, extra "longform").
+# Не поднимать их выше, не проверив совместимость с gigaam.
+torch==2.10.*
+torchaudio==2.10.*
+onnxruntime==1.23.*
+onnx==1.19.*
+omegaconf==2.3.*
+soundfile>=0.14.0
+numpy>=2.0,<3
+pyannote.audio==4.0.*
+librosa>=1.0.0
+
+# GigaAM
+# Установка через Dockerfile: git clone + pip install --no-deps.
+# Зависимости gigaam продублированы здесь вручную (hydra-core, omegaconf,
+# onnx, onnxruntime, soundfile, sentencepiece, tqdm, numpy).
+hydra-core==1.3.*
+sentencepiece>=0.2.3
+tqdm>=4.66.0
+
+# Additional utilities
+httpx>=0.28.1
+pydantic>=2.14.3
+pydantic-settings>=2.16.2
+python-dotenv>=1.2.4
+psutil>=7.2.2
+
+# Optional dependencies for enhanced functionality
+# python-magic>=0.4.27  # Uncomment for deep MIME validation (requires libmagic)

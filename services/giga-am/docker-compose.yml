@@ -1,0 +1,23 @@
+services:
+  giga-am:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+      args:
+        GIGAAM_REV: ${GIGAAM_REV:-7447938d791c4f3e643386ee22c33777004293a5}
+    container_name: giga-am-api
+    ports:
+      - "7860:7860"
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+      - LOG_LEVEL=INFO
+    volumes:
+      # Логи приложения на хосте
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

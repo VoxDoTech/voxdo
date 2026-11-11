@@ -1,0 +1,21 @@
+# HuggingFace Spaces Configuration
+title: "Audio Enhancer v2.0"
+emoji: "🎵"
+colorFrom: "blue"
+colorTo: "purple"
+sdk: "docker"
+pinned: false
+license: "mit"
+app_port: 7861
+sleep_time: 900
+
+# Pro-ориентированные рекомендации
+suggested_hardware: "t4-small"
+suggested_storage: "small"
+startup_duration_timeout: "1h"
+short_description: "Микросервис для улучшения качества аудио перед ASR"
+tags:
+  - audio
+  - speech
+  - denoise
+  - docker

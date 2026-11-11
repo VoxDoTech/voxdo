@@ -1,0 +1,61 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+*.egg
+
+# Virtual environments
+venv
+env
+ENV
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+temp/
+*.tmp
+*.bak
+
+# Environment files
+.env
+.env.local
+
+# Demo files
+demo.mp3
+
+# Documentation
+README.md
+README_HF.md
+QUICK_START.md
+SETUP_HF.md
+
+# Scripts
+api_example.py
+api_example.sh
+fix_audiodecoder.bat
+fix_audiodecoder.sh
+
+# Docker files (not needed in image)
+Dockerfile
+Dockerfile.simple
+docker-compose.yml
+space.yml
