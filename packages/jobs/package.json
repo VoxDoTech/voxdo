@@ -25,8 +25,11 @@
   },
   "dependencies": {
     "@acme/config": "workspace:*",
+    "@acme/db": "workspace:*",
     "@acme/emails": "workspace:*",
-    "@hatchet-dev/typescript-sdk": "1.46.2"
+    "@acme/storage": "workspace:*",
+    "@hatchet-dev/typescript-sdk": "1.46.2",
+    "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
     "@acme/tsconfig": "workspace:*",

@@ -49,6 +49,8 @@ CI fails if `src/schema` has changes with no committed migration.
 ## Layout
 
 ```
+apps/mobile         Capacitor Android app (Vite+React): voice notes UI,
+                    talks to the oRPC API with a Better Auth bearer token
 apps/app            Next.js 16 App Router (RSC). Serves the API itself.
   src/app/api/orpc  oRPC HTTP handler    src/app/api/auth  Better Auth handler
   src/orpc/server.ts  RSC caller `api` (server-only)
@@ -153,6 +155,10 @@ and run `tsc` by hand, build them first.
   `bun --env-file=../../.env`. Never commit it or print its values.
 - `src/proxy.ts` is only an optimistic redirect — always enforce auth in the
   procedure / page (`protectedProcedure`, session check).
+- `apps/mobile` authenticates with a Better Auth **bearer token** (the
+  `bearer()` plugin in `@acme/auth`), not cookies; `/api/auth/*` and
+  `/api/orpc` answer CORS only for localhost / `capacitor://localhost`
+  origins (`apps/app/src/lib/cors.ts`).
 - oRPC is pinned to `2.0.0-beta.*` (npm `beta` tag; plain installs get v1).
   v2 docs: https://orpc.dev. `RPCLink` takes `origin` + path-only `url`, and
   `RPCHandler` rejects GET by default. v1 clients can't talk to a v2 server.

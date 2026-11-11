@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VoxDo</string>
+    <string name="title_activity_main">VoxDo</string>
+    <string name="package_name">com.voxdo.app</string>
+    <string name="custom_url_scheme">com.voxdo.app</string>
+</resources>

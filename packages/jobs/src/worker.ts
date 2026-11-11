@@ -26,6 +26,7 @@ async function main() {
     processDocumentWorkflow,
     scheduledWorkflow,
     sendEmailTask,
+    transcribeAudioTask,
   } = await import("./workflows");
 
   const worker = await hatchet.worker("acme-worker", {
@@ -34,6 +35,7 @@ async function main() {
       helloWorldTask,
       scheduledWorkflow,
       processDocumentWorkflow,
+      transcribeAudioTask,
     ],
     // Maximum number of concurrent task runs this worker will accept.
     // Tune based on the workload's CPU/memory profile.

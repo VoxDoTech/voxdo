@@ -88,3 +88,18 @@ export async function getDownloadUrl(key: string): Promise<string> {
 
   return getSignedUrl(s3Client, command, { expiresIn: 3600 }); // 1 hour
 }
+
+/** Downloads an S3 object into memory — used by background jobs. */
+export async function downloadFromS3(key: string): Promise<Buffer> {
+  const res = await s3Client.send(
+    new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key }),
+  );
+  if (!res.Body) {
+    throw new Error(`S3 object '${key}' has no body`);
+  }
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of res.Body as AsyncIterable<Uint8Array>) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
