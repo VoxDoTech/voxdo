@@ -87,6 +87,7 @@
     "AWS_REGION",
     "AWS_S3_BUCKET",
     "HATCHET_CLIENT_TOKEN",
+    "GIGA_AM_URL",
     "ADMIN_EMAILS"
   ],
   "globalPassThroughEnv": [

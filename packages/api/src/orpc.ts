@@ -27,6 +27,12 @@ export interface CreateORPCContextOptions {
   headers: Headers;
   /** Pre-resolved session (or `null` for anonymous requests). */
   session: Session | null;
+  /**
+   * Registers fire-and-forget work so the request runtime keeps the
+   * process alive until it settles — Next.js `after()` inside a request.
+   * Procedures pass it to `dispatchTranscription` for the inline fallback.
+   */
+  defer?: (promise: Promise<unknown>) => void;
 }
 
 export function createORPCContext(opts: CreateORPCContextOptions) {
@@ -34,6 +40,7 @@ export function createORPCContext(opts: CreateORPCContextOptions) {
     session: opts.session,
     headers: opts.headers,
     db,
+    defer: opts.defer ?? ((promise: Promise<unknown>) => void promise),
   };
 }
 

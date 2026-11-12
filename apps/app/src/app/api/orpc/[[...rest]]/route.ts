@@ -2,6 +2,8 @@ import { appRouter, createORPCContext } from "@acme/api";
 import { logger } from "@acme/config";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
+import { after } from "next/server";
+import { handleCorsPreflight, withCors } from "~/lib/cors";
 
 const handler = new RPCHandler(appRouter, {
   interceptors: [
@@ -12,6 +14,9 @@ const handler = new RPCHandler(appRouter, {
 });
 
 async function handleRequest(request: Request) {
+  const preflight = handleCorsPreflight(request);
+  if (preflight) return preflight;
+
   const { auth } = await import("~/auth/server");
 
   const session = await auth.api.getSession({ headers: request.headers });
@@ -21,10 +26,22 @@ async function handleRequest(request: Request) {
     context: createORPCContext({
       headers: request.headers,
       session,
+      // Keeps inline background work (e.g. transcription fallback) alive
+      // past the response on serverless; no-op outside a request.
+      defer: (promise) => {
+        try {
+          after(promise);
+        } catch {
+          void promise;
+        }
+      },
     }),
   });
 
-  return response ?? new Response("Not found", { status: 404 });
+  return withCors(
+    request,
+    response ?? new Response("Not found", { status: 404 }),
+  );
 }
 
 export const HEAD = handleRequest;
@@ -33,3 +50,4 @@ export const POST = handleRequest;
 export const PUT = handleRequest;
 export const PATCH = handleRequest;
 export const DELETE = handleRequest;
+export const OPTIONS = handleRequest;

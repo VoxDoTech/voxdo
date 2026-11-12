@@ -17,6 +17,8 @@
     "db:check": "bun run --cwd packages/db check:migrations",
     "db:studio": "turbo -F @acme/db studio",
     "dev": "turbo watch dev -F @acme/app...",
+    "dev:mobile": "bun run --cwd apps/mobile dev",
+    "mobile:sync": "bun run --cwd apps/mobile cap:sync",
     "dev:all": "turbo watch dev --continue",
     "dev:next": "turbo watch dev -F @acme/app...",
     "jobs:dev": "bun run --cwd packages/jobs worker",

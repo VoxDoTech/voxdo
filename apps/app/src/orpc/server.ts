@@ -4,6 +4,7 @@ import { appRouter, createORPCContext } from "@acme/api";
 import { createRouterClient } from "@orpc/server";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { cache } from "react";
 import { auth } from "~/auth/server";
 
@@ -16,6 +17,15 @@ const createServerContext = cache(async () => {
   return createORPCContext({
     headers: heads,
     session,
+    // Same background-work hook as the route handler: `after` only works
+    // inside a request, elsewhere the promise just runs unawaited.
+    defer: (promise) => {
+      try {
+        after(promise);
+      } catch {
+        void promise;
+      }
+    },
   });
 });
 

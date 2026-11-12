@@ -3,7 +3,7 @@ import { type Database, db } from "@acme/db";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, emailOTP, oAuthProxy } from "better-auth/plugins";
+import { admin, bearer, emailOTP, oAuthProxy } from "better-auth/plugins";
 
 import { ADMIN_ROLE, hasAdminRole, isAdminEmail } from "./roles";
 
@@ -97,6 +97,13 @@ export function initAuth<
        * @see https://www.better-auth.com/docs/plugins/admin
        */
       admin({ adminRoles: [ADMIN_ROLE] }),
+      /**
+       * Bearer tokens for non-cookie clients (the Capacitor app in
+       * apps/mobile). Sign-in responses carry the token in the
+       * `set-auth-token` header; `getSession` accepts
+       * `Authorization: Bearer <token>`.
+       */
+      bearer(),
       ...(options.extraPlugins ?? []),
     ],
     // ADMIN_EMAILS bootstrap: listed emails sign up as admins, and existing

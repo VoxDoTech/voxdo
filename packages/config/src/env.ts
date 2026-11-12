@@ -33,6 +33,9 @@ export const env = createEnv({
     // Hatchet (background jobs). Unset: @acme/jobs runs work inline.
     HATCHET_CLIENT_TOKEN: z.string().optional(),
 
+    // Self-hosted GigaAM transcription service (services/giga-am)
+    GIGA_AM_URL: z.url().optional(),
+
     // AWS S3
     AWS_S3_ENDPOINT: z.string().optional(),
     AWS_S3_FORCE_PATH_STYLE: z.string().optional(),
@@ -63,6 +66,7 @@ export const env = createEnv({
     AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
     ADMIN_EMAILS: process.env.ADMIN_EMAILS,
     HATCHET_CLIENT_TOKEN: process.env.HATCHET_CLIENT_TOKEN,
+    GIGA_AM_URL: process.env.GIGA_AM_URL,
     AWS_S3_ENDPOINT: process.env.AWS_S3_ENDPOINT,
     AWS_S3_FORCE_PATH_STYLE: process.env.AWS_S3_FORCE_PATH_STYLE,
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
