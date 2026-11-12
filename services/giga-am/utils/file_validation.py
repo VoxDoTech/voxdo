@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 CHUNK_SIZE = 64 * 1024  # 64KB
 
 
-async def read_upload_with_limit(file: UploadFile) -> bytes:
+async def read_upload_with_limit(file: UploadFile, filename: str) -> bytes:
     """
     Читает загруженный файл чанками, прерываясь при превышении лимита размера.
 
@@ -19,6 +19,7 @@ async def read_upload_with_limit(file: UploadFile) -> bytes:
 
     Args:
         file: Загруженный файл
+        filename: Имя, используемое обработчиком аудио
 
     Returns:
         Содержимое файла в байтах
@@ -28,7 +29,7 @@ async def read_upload_with_limit(file: UploadFile) -> bytes:
             413 при превышении лимита размера
     """
     # Проверка расширения файла
-    file_extension = os.path.splitext(file.filename or "")[1].lower()
+    file_extension = os.path.splitext(filename or "")[1].lower()
     if file_extension not in settings.allowed_audio_formats:
         raise HTTPException(
             status_code=400,

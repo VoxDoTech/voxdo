@@ -177,7 +177,7 @@ async def transcribe_diarized_async(
         logger.info(f"[{request_id}] Парсинг сегментов успешен: {len(segments_data)} сегментов")
 
         # Читаем файл чанками с проверкой размера во время чтения
-        audio_data = await read_upload_with_limit(file)
+        audio_data = await read_upload_with_limit(file, filename)
 
         logger.info(f"[{request_id}] Аудио файл прочитан: {len(audio_data)} bytes")
         

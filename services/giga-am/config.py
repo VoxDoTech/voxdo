@@ -35,7 +35,13 @@ class Settings(BaseSettings):
     inngest_api_url: str = "http://localhost:3001"
     inngest_event_key: str = ""
 
-    callback_timeout: int = 20
+    callback_timeout: int = Field(default=20, ge=1)
+    callback_allowed_hosts: List[str] = []
+    callback_allowed_networks: List[str] = []
+    callback_response_max_bytes: int = Field(default=64 * 1024, ge=1)
+    callback_max_attempts: int = Field(default=3, ge=1)
+    callback_retry_seconds: int = Field(default=60, ge=1)
+    callback_outbox_path: str = "data/webhook-callbacks.sqlite3"
 
     # Concurrency settings
     model_workers: int = Field(default=2, ge=1)

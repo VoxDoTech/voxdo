@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uvicorn
 from contextlib import asynccontextmanager
@@ -11,7 +12,8 @@ from services.task_manager import task_manager
 
 # Import routers
 from routes.health import router as health_router
-from routes.transcribe_async import router as transcribe_async_router
+from routes.transcribe_async import router as transcribe_async_router, send_webhook_callback
+from services.callback_outbox import callback_outbox
 from routes.transcribe_diarized_async import router as transcribe_diarized_async_router
 from routes.transcribe_sync import router as transcribe_sync_router
 from routes.tasks import router as tasks_router
@@ -24,14 +26,23 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Lifespan context manager для управления жизненным циклом приложения"""
     # Startup
+    with callback_outbox.connect():
+        pass
     await task_manager.start()
     logger.info("TaskManager started")
     
-    yield
-    
-    # Shutdown
-    await task_manager.stop()
-    logger.info("TaskManager stopped")
+    callback_worker = asyncio.create_task(callback_outbox.run(send_webhook_callback))
+    try:
+        yield
+    finally:
+        callback_worker.cancel()
+        try:
+            await callback_worker
+        except asyncio.CancelledError:
+            pass
+
+        await task_manager.stop()
+        logger.info("TaskManager stopped")
 
 
 app = FastAPI(
