@@ -7,6 +7,7 @@
 
 export type { TranscribeNoteInput } from "../transcription";
 export { hatchet } from "./client";
+export { deleteAudioTask } from "./delete-audio";
 export type { HelloWorldInput } from "./hello-world";
 export { helloWorldTask } from "./hello-world";
 export type { ProcessDocumentInput } from "./multi-step";

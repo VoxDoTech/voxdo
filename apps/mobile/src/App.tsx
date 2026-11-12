@@ -1,5 +1,5 @@
 import type { RouterOutputs } from "@acme/api";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { API_URL, fetchSession, type SessionUser, signOut } from "./lib/api";
 import { LoginScreen } from "./screens/Login";
@@ -17,18 +17,53 @@ interface DetailState {
 
 export function App() {
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
+  const [sessionError, setSessionError] = useState(false);
   const [tab, setTab] = useState<Tab>("notes");
   const [detail, setDetail] = useState<DetailState | null>(null);
+  const lastUserId = useRef<string | null | undefined>(undefined);
 
   const refreshSession = useCallback(async () => {
-    setUser(await fetchSession());
+    try {
+      setUser(await fetchSession());
+      setSessionError(false);
+    } catch {
+      setSessionError(true);
+    }
   }, []);
 
   useEffect(() => {
     void refreshSession();
   }, [refreshSession]);
 
+  // A different signed-in user (sign-out, account switch) must not see the
+  // previous user's open note or navigation state.
+  useEffect(() => {
+    const id = user?.id ?? null;
+    if (lastUserId.current !== undefined && id !== lastUserId.current) {
+      setDetail(null);
+      setTab("notes");
+    }
+    lastUserId.current = id;
+  }, [user]);
+
   if (user === undefined) {
+    if (sessionError) {
+      return (
+        <div className="splash">
+          <p>Нет соединения с сервером</p>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              setUser(undefined);
+              void refreshSession();
+            }}
+          >
+            Повторить
+          </button>
+        </div>
+      );
+    }
     return <div className="splash">VoxDo</div>;
   }
   if (!user) {

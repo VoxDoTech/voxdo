@@ -2,6 +2,7 @@ import { appRouter, createORPCContext } from "@acme/api";
 import { logger } from "@acme/config";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
+import { after } from "next/server";
 import { handleCorsPreflight, withCors } from "~/lib/cors";
 
 const handler = new RPCHandler(appRouter, {
@@ -25,6 +26,15 @@ async function handleRequest(request: Request) {
     context: createORPCContext({
       headers: request.headers,
       session,
+      // Keeps inline background work (e.g. transcription fallback) alive
+      // past the response on serverless; no-op outside a request.
+      defer: (promise) => {
+        try {
+          after(promise);
+        } catch {
+          void promise;
+        }
+      },
     }),
   });
 

@@ -36,11 +36,13 @@ function blobToBase64(blob: Blob): Promise<string> {
 
 export class VoiceRecorder {
   private recorder: MediaRecorder | null = null;
+  private stream: MediaStream | null = null;
   private chunks: Blob[] = [];
   private startedAt = 0;
 
   async start(): Promise<void> {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    this.stream = stream;
     const mimeType = pickMimeType();
     this.recorder = new MediaRecorder(
       stream,
@@ -66,6 +68,7 @@ export class VoiceRecorder {
         recorder.stream.getTracks().forEach((t) => {
           t.stop();
         });
+        this.stream = null;
         const blob = new Blob(this.chunks, { type: recorder.mimeType });
         const base64 = await blobToBase64(blob);
         resolve({
@@ -82,12 +85,15 @@ export class VoiceRecorder {
 
   cancel(): void {
     const recorder = this.recorder;
-    if (!recorder) return;
-    recorder.onstop = null;
-    recorder.stop();
-    recorder.stream.getTracks().forEach((t) => {
+    if (recorder) {
+      recorder.onstop = null;
+      recorder.stop();
+    }
+    // Covers a start() that is still acquiring the microphone.
+    this.stream?.getTracks().forEach((t) => {
       t.stop();
     });
+    this.stream = null;
     this.recorder = null;
     this.chunks = [];
   }

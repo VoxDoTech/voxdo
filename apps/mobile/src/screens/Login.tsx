@@ -13,15 +13,20 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: () => void }) {
   const submit = async () => {
     setBusy(true);
     setError(null);
-    const res =
-      mode === "in"
-        ? await signIn(email.trim(), password)
-        : await signUp(email.trim(), password, name.trim() || email.trim());
-    setBusy(false);
-    if (res.ok) {
-      onSignedIn();
-    } else {
-      setError(res.error ?? "Не удалось войти");
+    try {
+      const res =
+        mode === "in"
+          ? await signIn(email.trim(), password)
+          : await signUp(email.trim(), password, name.trim() || email.trim());
+      if (res.ok) {
+        onSignedIn();
+      } else {
+        setError(res.error ?? "Не удалось войти");
+      }
+    } catch {
+      setError("Нет соединения с сервером");
+    } finally {
+      setBusy(false);
     }
   };
 

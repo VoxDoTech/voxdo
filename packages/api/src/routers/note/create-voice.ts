@@ -1,6 +1,6 @@
 import { Folder, Note } from "@acme/db";
 import { dispatchTranscription } from "@acme/jobs";
-import { generateS3Key, uploadBufferToS3 } from "@acme/storage";
+import { deleteFromS3, generateS3Key, uploadBufferToS3 } from "@acme/storage";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -66,24 +66,30 @@ export const createVoice = protectedProcedure
       throw errors.UPLOAD_FAILED();
     }
 
-    const note = (
-      await context.db
-        .insert(Note)
-        .values({
-          userId: context.session.user.id,
-          folderId: input.folderId ?? null,
-          title: input.title ?? null,
-          kind: "voice",
-          status: "processing",
-          audioKey,
-          audioMimeType: input.mimeType,
-          audioDurationSec: input.durationSec ?? null,
-        })
-        .returning()
-    )[0];
-    if (!note) throw errors.UPLOAD_FAILED();
+    const [note] = await context.db
+      .insert(Note)
+      .values({
+        userId: context.session.user.id,
+        folderId: input.folderId ?? null,
+        title: input.title ?? null,
+        kind: "voice",
+        status: "processing",
+        audioKey,
+        audioMimeType: input.mimeType,
+        audioDurationSec: input.durationSec ?? null,
+      })
+      .returning()
+      .catch(async (error) => {
+        // Compensating cleanup: don't leave an orphaned upload behind.
+        await deleteFromS3(audioKey).catch(() => undefined);
+        throw error;
+      });
+    if (!note) {
+      await deleteFromS3(audioKey).catch(() => undefined);
+      throw errors.UPLOAD_FAILED();
+    }
 
-    await dispatchTranscription({ noteId: note.id, audioKey });
+    await dispatchTranscription({ noteId: note.id, audioKey }, context.defer);
 
     return note;
   });

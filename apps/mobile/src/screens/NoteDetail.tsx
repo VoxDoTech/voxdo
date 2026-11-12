@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Note } from "../App";
 import { api } from "../lib/api";
 
@@ -14,6 +14,11 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
   const [status, setStatus] = useState(note.status);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Fields the user has touched must not be overwritten by polling.
+  const contentDirty = useRef(false);
+  const titleDirty = useRef(false);
 
   // Poll while the transcription is running.
   useEffect(() => {
@@ -23,8 +28,8 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
         const fresh = await api.note.byId({ id: note.id });
         setStatus(fresh.status);
         if (fresh.status !== "processing") {
-          setContent(fresh.content);
-          setTitle(fresh.title ?? "");
+          if (!contentDirty.current) setContent(fresh.content);
+          if (!titleDirty.current) setTitle(fresh.title ?? "");
           clearInterval(timer);
         }
       } catch {
@@ -43,18 +48,33 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
   }, [note.id, note.kind]);
 
   const save = async () => {
-    await api.note.update({
-      id: note.id,
-      title: title || null,
-      content,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    // Serialize saves: a second tap while a request is in flight could
+    // otherwise land an older payload after a newer one.
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.note.update({
+        id: note.id,
+        title: title || null,
+        content,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось сохранить");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const remove = async () => {
-    await api.note.delete({ id: note.id });
-    onDeleted();
+    try {
+      await api.note.delete({ id: note.id });
+      onDeleted();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось удалить");
+    }
   };
 
   return (
@@ -76,7 +96,10 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
         className="title-input"
         placeholder="Заголовок"
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(e) => {
+          titleDirty.current = true;
+          setTitle(e.target.value);
+        }}
       />
 
       {status === "processing" && (
@@ -87,6 +110,7 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
           Ошибка транскрипции{note.errorMessage ? `: ${note.errorMessage}` : ""}
         </p>
       )}
+      {error && <p className="error">{error}</p>}
 
       {audioUrl && (
         // biome-ignore lint/a11y/useMediaCaption: voice memo playback has no caption track
@@ -96,14 +120,22 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
       <textarea
         className="editor"
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => {
+          contentDirty.current = true;
+          setContent(e.target.value);
+        }}
         placeholder={
           status === "processing" ? "Ждите транскрипцию…" : "Текст заметки…"
         }
       />
 
-      <button type="button" className="primary" onClick={() => void save()}>
-        {saved ? "Сохранено ✓" : "Сохранить"}
+      <button
+        type="button"
+        className="primary"
+        disabled={saving}
+        onClick={() => void save()}
+      >
+        {saving ? "Сохранение…" : saved ? "Сохранено ✓" : "Сохранить"}
       </button>
     </div>
   );

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Folder, Note } from "../App";
 import { api } from "../lib/api";
 
 interface Props {
   onOpen: (note: Note) => void;
 }
+
+const PAGE_SIZE = 50;
 
 function formatDate(iso: string | Date): string {
   const d = new Date(iso);
@@ -27,20 +29,34 @@ export function NotesScreen({ onOpen }: Props) {
   const [showFolders, setShowFolders] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Monotonic request id — responses from superseded filter/search
+  // combinations are dropped instead of overwriting newer results.
+  const requestSeq = useRef(0);
 
-  const load = useCallback(async () => {
-    const [noteList, folderList] = await Promise.all([
-      api.note.list({
-        folderId: folderFilter ?? undefined,
-        q: search.trim() || undefined,
-      }),
-      api.folder.list(),
-    ]);
-    setNotes(noteList);
-    setFolders(folderList);
-  }, [folderFilter, search]);
+  const load = useCallback(
+    async (offset = 0) => {
+      const seq = ++requestSeq.current;
+      const [noteList, folderList] = await Promise.all([
+        api.note.list({
+          folderId: folderFilter ?? undefined,
+          q: search.trim() || undefined,
+          limit: PAGE_SIZE,
+          offset,
+        }),
+        api.folder.list(),
+      ]);
+      if (seq !== requestSeq.current) return;
+      setNotes((prev) => (offset === 0 ? noteList : [...prev, ...noteList]));
+      setHasMore(noteList.length === PAGE_SIZE);
+      setFolders(folderList);
+    },
+    [folderFilter, search],
+  );
 
   useEffect(() => {
+    setLoadingMore(false);
     void load().catch((e) =>
       setError(e instanceof Error ? e.message : "Ошибка загрузки"),
     );
@@ -218,6 +234,24 @@ export function NotesScreen({ onOpen }: Props) {
           </li>
         )}
       </ul>
+
+      {hasMore && (
+        <button
+          type="button"
+          className="ghost"
+          disabled={loadingMore}
+          onClick={() => {
+            setLoadingMore(true);
+            void load(notes.length)
+              .catch((e) =>
+                setError(e instanceof Error ? e.message : "Ошибка загрузки"),
+              )
+              .finally(() => setLoadingMore(false));
+          }}
+        >
+          {loadingMore ? "Загрузка…" : "Загрузить ещё"}
+        </button>
+      )}
     </div>
   );
 }
