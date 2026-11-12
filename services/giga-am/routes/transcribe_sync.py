@@ -59,7 +59,7 @@ async def transcribe_sync(
         logger.info(f"[{request_id}] Получен синхронный запрос на транскрипцию: {filename}")
 
         # Читаем файл чанками с проверкой размера во время чтения
-        audio_data = await read_upload_with_limit(file)
+        audio_data = await read_upload_with_limit(file, filename)
         
         # Запускаем синхронную обработку
         result = await pipeline_service.process_audio_sync(
