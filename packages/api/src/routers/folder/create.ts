@@ -13,5 +13,6 @@ export const create = protectedProcedure
       .insert(Folder)
       .values({ userId: context.session.user.id, name: input.name.trim() })
       .returning();
+    if (!folder) throw new Error("Folder insert returned no row");
     return folder;
   });

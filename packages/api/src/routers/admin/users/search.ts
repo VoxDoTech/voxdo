@@ -30,6 +30,8 @@ export const search = adminProcedure
         email: true,
         username: true,
         emailVerified: true,
+        role: true,
+        banned: true,
         createdAt: true,
       },
     });
