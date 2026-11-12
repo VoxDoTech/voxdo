@@ -1,3 +1,4 @@
+import { isAdmin } from "@acme/auth/roles";
 import { paths } from "@acme/config";
 import {
   Sidebar,
@@ -35,6 +36,10 @@ async function SessionSidebar() {
 
   return (
     <AppSidebar
+      isAdmin={isAdmin({
+        email: session.user.email,
+        role: session.user.role,
+      })}
       user={{
         name: session.user.name,
         email: session.user.email,

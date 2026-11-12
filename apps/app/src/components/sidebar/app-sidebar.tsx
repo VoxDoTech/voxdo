@@ -1,5 +1,3 @@
-"use client";
-
 import { APP_CONFIG, paths } from "@acme/config";
 import {
   Sidebar,
@@ -12,91 +10,35 @@ import {
   SidebarRail,
 } from "@acme/ui";
 import {
-  IconChartBar,
-  IconDashboard,
-  IconDatabase,
-  IconFileWord,
-  IconFolder,
   IconInnerShadowTop,
-  IconListDetails,
-  IconReport,
+  IconMicrophone,
   IconSettings,
-  IconUsers,
+  IconShield,
 } from "@tabler/icons-react";
 import type * as React from "react";
-import {
-  NavDocuments,
-  NavMain,
-  NavSecondary,
-  NavUser,
-} from "~/components/sidebar";
-
-const data = {
-  navMain: [
-    {
-      title: "Панель управления",
-      url: paths.dashboard.root,
-      icon: IconDashboard,
-      isActive: true,
-      items: [
-        { title: "Обзор", url: paths.dashboard.root },
-        { title: "Аналитика", url: "#" },
-        { title: "Отчёты", url: "#" },
-      ],
-    },
-    {
-      title: "Жизненный цикл",
-      url: "#",
-      icon: IconListDetails,
-      items: [
-        { title: "Активные", url: "#" },
-        { title: "Архив", url: "#" },
-      ],
-    },
-    {
-      title: "Аналитика",
-      url: "#",
-      icon: IconChartBar,
-      items: [
-        { title: "Обзор", url: "#" },
-        { title: "Тренды", url: "#" },
-      ],
-    },
-    {
-      title: "Проекты",
-      url: "#",
-      icon: IconFolder,
-      items: [
-        { title: "Активные проекты", url: "#" },
-        { title: "Архив", url: "#" },
-      ],
-    },
-    {
-      title: "Команда",
-      url: "#",
-      icon: IconUsers,
-      items: [
-        { title: "Участники", url: "#" },
-        { title: "Роли", url: "#" },
-      ],
-    },
-  ],
-  navSecondary: [
-    { title: "Настройки", url: paths.settings.root, icon: IconSettings },
-  ],
-  documents: [
-    { name: "Библиотека данных", url: "#", icon: IconDatabase },
-    { name: "Отчёты", url: "#", icon: IconReport },
-    { name: "Помощник по Word", url: "#", icon: IconFileWord },
-  ],
-};
+import { NavMain, NavSecondary, NavUser } from "~/components/sidebar";
 
 export function AppSidebar({
   user,
+  isAdmin = false,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   user: { name: string; email: string; avatar: string };
+  isAdmin?: boolean;
 }) {
+  const navMain = [
+    { title: "Заметки", url: paths.dashboard.root, icon: IconMicrophone },
+    ...(isAdmin
+      ? [
+          {
+            title: "Администрирование",
+            url: paths.admin.root,
+            icon: IconShield,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -119,9 +61,17 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavMain items={navMain} />
+        <NavSecondary
+          items={[
+            {
+              title: "Настройки",
+              url: paths.settings.root,
+              icon: IconSettings,
+            },
+          ]}
+          className="mt-auto"
+        />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />
