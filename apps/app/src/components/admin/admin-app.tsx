@@ -33,6 +33,7 @@ function useDebouncedValue<T>(value: T, delayMs = 300): T {
 
 export function AdminApp({ currentUserId }: { currentUserId: string }) {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search).trim();
 
@@ -40,7 +41,7 @@ export function AdminApp({ currentUserId }: { currentUserId: string }) {
 
   const listQuery = useQuery({
     ...orpc.admin.users.list.queryOptions({
-      input: { limit: PAGE_SIZE, offset: 0 },
+      input: { limit: PAGE_SIZE, offset: page * PAGE_SIZE },
     }),
     enabled: debouncedSearch.length === 0,
   });
@@ -95,29 +96,44 @@ export function AdminApp({ currentUserId }: { currentUserId: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          icon={<IconUsers className="size-4" />}
-          label="Пользователи"
-          value={stats?.users}
-        />
-        <StatCard
-          icon={<IconUser className="size-4" />}
-          label="Заметки"
-          value={stats?.notes}
-        />
-        <StatCard
-          icon={<IconShield className="size-4" />}
-          label="Папки"
-          value={stats?.folders}
-        />
-      </div>
+      {statsQuery.isError && !stats ? (
+        <div role="alert">
+          Не удалось загрузить статистику.
+          <Button
+            onClick={() => void statsQuery.refetch()}
+            disabled={statsQuery.isFetching}
+          >
+            Повторить
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            icon={<IconUsers className="size-4" />}
+            label="Пользователи"
+            value={stats?.users}
+          />
+          <StatCard
+            icon={<IconUser className="size-4" />}
+            label="Заметки"
+            value={stats?.notes}
+          />
+          <StatCard
+            icon={<IconShield className="size-4" />}
+            label="Папки"
+            value={stats?.folders}
+          />
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <Input
           placeholder="Поиск по имени или email…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
           className="max-w-sm"
         />
       </div>
@@ -235,6 +251,28 @@ export function AdminApp({ currentUserId }: { currentUserId: string }) {
           </TableBody>
         </Table>
       </div>
+      {!debouncedSearch && (
+        <nav
+          aria-label="Страницы пользователей"
+          className="flex items-center gap-2"
+        >
+          <Button
+            disabled={page === 0 || listQuery.isFetching}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Назад
+          </Button>
+          <span>Страница {page + 1}</span>
+          <Button
+            disabled={
+              listQuery.isFetching || !users || users.length < PAGE_SIZE
+            }
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Далее
+          </Button>
+        </nav>
+      )}
     </div>
   );
 }

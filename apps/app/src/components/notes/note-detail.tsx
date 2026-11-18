@@ -197,6 +197,8 @@ function NoteEditor({
       )}
 
       <Input
+        aria-label="Заголовок"
+        disabled={updateNote.isPending}
         placeholder="Заголовок"
         value={title}
         onChange={(e) => {
@@ -206,6 +208,8 @@ function NoteEditor({
       />
 
       <Textarea
+        aria-label="Текст заметки"
+        disabled={updateNote.isPending}
         value={content}
         onChange={(e) => {
           contentDirty.current = true;
@@ -221,6 +225,7 @@ function NoteEditor({
 
       {folders.length > 0 && (
         <Select
+          disabled={updateNote.isPending}
           value={folderId}
           onValueChange={(v) => {
             folderDirty.current = true;
@@ -247,8 +252,8 @@ function NoteEditor({
           onClick={() =>
             updateNote.mutate({
               id: note.id,
-              title: title.trim() || null,
-              content,
+              ...(titleDirty.current ? { title: title.trim() || null } : {}),
+              ...(contentDirty.current ? { content } : {}),
               folderId: folderId === "none" ? null : folderId,
             })
           }

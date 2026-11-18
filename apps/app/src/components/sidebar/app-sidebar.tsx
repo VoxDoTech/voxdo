@@ -1,3 +1,5 @@
+"use client";
+
 import { APP_CONFIG, paths } from "@acme/config";
 import {
   Sidebar,

@@ -22,7 +22,12 @@ import {
   IconSearch,
   IconX,
 } from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatNoteDate } from "~/lib/format";
@@ -43,36 +48,31 @@ function useDebouncedValue<T>(value: T, delayMs = 300): T {
 export function NotesApp() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search);
+  const debouncedSearch = useDebouncedValue(search).trim().slice(0, 200);
   const [folderFilter, setFolderFilter] = useState<string>("all");
-  const [pages, setPages] = useState(1);
   const [showNew, setShowNew] = useState(false);
   const [showFolders, setShowFolders] = useState(false);
-
-  // Filters reset pagination back to the first page — adjusted during render
-  // instead of an effect so a stale page can't show through one frame.
-  const filterKey = `${folderFilter}${debouncedSearch}`;
-  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
-  if (prevFilterKey !== filterKey) {
-    setPrevFilterKey(filterKey);
-    setPages(1);
-  }
 
   const foldersQuery = useQuery(orpc.folder.list.queryOptions());
   const folders = foldersQuery.data ?? [];
 
-  const notesQuery = useQuery(
-    orpc.note.list.queryOptions({
-      input: {
+  const notesQuery = useInfiniteQuery(
+    orpc.note.list.infiniteOptions({
+      input: (offset: number) => ({
         folderId: folderFilter === "all" ? undefined : folderFilter,
         q: debouncedSearch.trim() || undefined,
-        limit: PAGE_SIZE * pages,
-        offset: 0,
-      },
+        limit: PAGE_SIZE,
+        offset,
+      }),
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, pages) =>
+        lastPage.length === PAGE_SIZE
+          ? pages.reduce((total, page) => total + page.length, 0)
+          : undefined,
     }),
   );
-  const notes = notesQuery.data ?? [];
-  const hasMore = notes.length === PAGE_SIZE * pages;
+  const notes = notesQuery.data?.pages.flat() ?? [];
+  const hasMore = notesQuery.hasNextPage;
 
   const folderNameOf = (id: string | null) =>
     id ? (folders.find((f) => f.id === id)?.name ?? null) : null;
@@ -83,6 +83,8 @@ export function NotesApp() {
         <div className="relative min-w-48 flex-1">
           <IconSearch className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
+            aria-label="Поиск по заметкам"
+            maxLength={200}
             placeholder="Поиск по заметкам…"
             className="pl-8"
             value={search}
@@ -123,12 +125,26 @@ export function NotesApp() {
         </Button>
       </div>
 
+      {foldersQuery.isError && (
+        <div role="alert">
+          Не удалось загрузить папки.
+          <Button
+            disabled={foldersQuery.isFetching}
+            onClick={() => void foldersQuery.refetch()}
+          >
+            Повторить
+          </Button>
+        </div>
+      )}
       {showFolders && (
         <FoldersPanel
           folders={folders}
-          onChanged={() =>
-            queryClient.invalidateQueries({ queryKey: orpc.folder.key() })
-          }
+          loaded={foldersQuery.isSuccess}
+          onChanged={(deletedId) => {
+            if (deletedId === folderFilter) setFolderFilter("all");
+            void queryClient.invalidateQueries({ queryKey: orpc.folder.key() });
+            void queryClient.invalidateQueries({ queryKey: orpc.note.key() });
+          }}
         />
       )}
 
@@ -214,7 +230,7 @@ export function NotesApp() {
           variant="outline"
           className="self-center"
           disabled={notesQuery.isFetching}
-          onClick={() => setPages((p) => p + 1)}
+          onClick={() => void notesQuery.fetchNextPage()}
         >
           {notesQuery.isFetching ? "Загрузка…" : "Загрузить ещё"}
         </Button>
@@ -260,11 +276,13 @@ function NewNoteForm({
   return (
     <div className="flex flex-col gap-3 rounded-xl border p-4">
       <Input
+        aria-label="Заголовок"
         placeholder="Заголовок (необязательно)"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
       <Textarea
+        aria-label="Текст заметки"
         placeholder="Текст заметки…"
         rows={4}
         value={content}
@@ -310,11 +328,13 @@ function NewNoteForm({
 }
 
 function FoldersPanel({
+  loaded,
   folders,
   onChanged,
 }: {
   folders: { id: string; name: string }[];
-  onChanged: () => void;
+  loaded: boolean;
+  onChanged: (deletedId?: string) => void;
 }) {
   const [name, setName] = useState("");
 
@@ -328,7 +348,7 @@ function FoldersPanel({
   });
   const deleteFolder = useMutation({
     ...orpc.folder.delete.mutationOptions(),
-    onSuccess: onChanged,
+    onSuccess: (_data, variables) => onChanged(variables.id),
     onError: (err) => toast.error(err.message || "Не удалось удалить папку"),
   });
 
@@ -349,12 +369,13 @@ function FoldersPanel({
             </button>
           </Badge>
         ))}
-        {folders.length === 0 && (
+        {loaded && folders.length === 0 && (
           <span className="text-muted-foreground text-sm">Папок пока нет.</span>
         )}
       </div>
       <div className="flex gap-2">
         <Input
+          aria-label="Имя папки"
           placeholder="Новая папка…"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -377,15 +398,38 @@ function FoldersPanel({
   );
 }
 
-type RecPhase = "idle" | "starting" | "recording" | "uploading" | "error";
+type RecPhase =
+  | "idle"
+  | "starting"
+  | "recording"
+  | "stopping"
+  | "uploading"
+  | "error";
 
 function VoiceNoteButton({ onUploaded }: { onUploaded: () => void }) {
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const mountedRef = useRef(true);
+  const savingRef = useRef(false);
   const [phase, setPhase] = useState<RecPhase>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pendingAudio, setPendingAudio] = useState<RecordedAudio | null>(null);
+
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingAudio) {
+      setDownloadUrl(null);
+      return;
+    }
+    const bytes = Uint8Array.from(atob(pendingAudio.base64), (c) =>
+      c.charCodeAt(0),
+    );
+    const url = URL.createObjectURL(
+      new Blob([bytes], { type: pendingAudio.mimeType }),
+    );
+    setDownloadUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingAudio]);
 
   const createVoice = useMutation({
     ...orpc.note.createVoice.mutationOptions(),
@@ -417,6 +461,12 @@ function VoiceNoteButton({ onUploaded }: { onUploaded: () => void }) {
   }, [phase]);
 
   const upload = async (audio: RecordedAudio) => {
+    setPendingAudio(audio);
+    if (audio.base64.length > 30_000_000) {
+      setError("Запись слишком большая. Скачайте её перед уходом со страницы.");
+      setPhase("error");
+      return;
+    }
     setPhase("uploading");
     setError(null);
     // Kept for retry if the upload fails — cleared on success.
@@ -458,20 +508,25 @@ function VoiceNoteButton({ onUploaded }: { onUploaded: () => void }) {
 
   const stopAndSave = async () => {
     const recorder = recorderRef.current;
-    if (!recorder) return;
+    if (!recorder || savingRef.current) return;
+    savingRef.current = true;
+    setPhase("stopping");
     try {
       const audio = await recorder.stop();
       recorderRef.current = null;
-      await upload(audio);
+      if (mountedRef.current) await upload(audio);
     } catch (e) {
       recorder.cancel();
       recorderRef.current = null;
       setError(e instanceof Error ? e.message : "Не удалось сохранить");
       setPhase("error");
+    } finally {
+      savingRef.current = false;
     }
   };
 
   const cancel = () => {
+    if (savingRef.current) return;
     recorderRef.current?.cancel();
     recorderRef.current = null;
     setPhase("idle");
@@ -480,7 +535,12 @@ function VoiceNoteButton({ onUploaded }: { onUploaded: () => void }) {
   const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
   const ss = String(elapsed % 60).padStart(2, "0");
 
-  if (phase === "recording" || phase === "uploading" || phase === "starting") {
+  if (
+    phase === "recording" ||
+    phase === "uploading" ||
+    phase === "stopping" ||
+    phase === "starting"
+  ) {
     return (
       <div className="flex items-center gap-2">
         <span className="text-destructive text-sm font-medium">
@@ -504,24 +564,36 @@ function VoiceNoteButton({ onUploaded }: { onUploaded: () => void }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Button variant="outline" onClick={() => void start()}>
+      <Button
+        variant="outline"
+        disabled={pendingAudio !== null}
+        onClick={() => void start()}
+      >
         <IconMicrophone />
         Записать
       </Button>
       {phase === "error" && error && (
-        <span className="text-destructive max-w-48 truncate text-xs">
-          {error}
-        </span>
+        <span className="text-destructive max-w-64 text-xs">{error}</span>
       )}
-      {pendingAudio && phase === "error" && (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => void upload(pendingAudio)}
+      {pendingAudio && downloadUrl && phase === "error" && (
+        <a
+          href={downloadUrl}
+          download={`voice-note.${pendingAudio.mimeType.includes("mp4") ? "m4a" : pendingAudio.mimeType.includes("ogg") ? "ogg" : "webm"}`}
         >
-          Повторить
-        </Button>
+          Скачать запись перед уходом
+        </a>
       )}
+      {pendingAudio &&
+        pendingAudio.base64.length <= 30_000_000 &&
+        phase === "error" && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => void upload(pendingAudio)}
+          >
+            Повторить
+          </Button>
+        )}
     </div>
   );
 }
