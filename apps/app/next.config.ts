@@ -17,8 +17,11 @@ const contentSecurityPolicy = [
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
+  // Voice notes: <audio> plays presigned S3/MinIO URLs (https in prod,
+  // http://localhost:* for the local docker MinIO).
+  "media-src 'self' blob: https: http://localhost:*",
   "font-src 'self' data:",
-  "connect-src 'self' https:",
+  "connect-src 'self' https: http://localhost:*",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -37,7 +40,8 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    // microphone=(self): in-browser voice recording for notes.
+    value: "camera=(), microphone=(self), geolocation=()",
   },
 ];
 

@@ -1,9 +1,9 @@
-import { Post, sql, user } from "@acme/db";
+import { Folder, Note, sql, user } from "@acme/db";
 
 import { adminProcedure } from "../../../orpc";
 
 /**
- * High-level system overview: total user count, total post count.
+ * High-level system overview: user, note and folder counts.
  *
  * Uses COUNT(*) aggregates for efficiency — no full table scans.
  *
@@ -14,12 +14,17 @@ export const overview = adminProcedure.handler(async ({ context }) => {
     .select({ count: sql<number>`count(*)::int` })
     .from(user);
 
-  const [postRow] = await context.db
+  const [noteRow] = await context.db
     .select({ count: sql<number>`count(*)::int` })
-    .from(Post);
+    .from(Note);
+
+  const [folderRow] = await context.db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(Folder);
 
   return {
     users: userRow?.count ?? 0,
-    posts: postRow?.count ?? 0,
+    notes: noteRow?.count ?? 0,
+    folders: folderRow?.count ?? 0,
   };
 });

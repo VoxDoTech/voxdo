@@ -21,4 +21,10 @@ export const paths = {
     profile: `${ROOTS.SETTINGS}/profile`,
     security: `${ROOTS.SETTINGS}/security`,
   },
+  admin: {
+    root: "/admin",
+  },
+  notes: {
+    detail: (id: string) => `/notes/${id}` as const,
+  },
 } as const;

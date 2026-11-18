@@ -18,10 +18,8 @@ import {
   useSidebar,
 } from "@acme/ui";
 import {
-  IconCreditCard,
   IconDotsVertical,
   IconLogout,
-  IconNotification,
   IconUserCircle,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -105,17 +103,11 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push(paths.settings.root)}
+              >
                 <IconUserCircle />
                 Аккаунт
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconCreditCard />
-                Оплата
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconNotification />
-                Уведомления
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

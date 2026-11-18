@@ -48,5 +48,6 @@ export const update = protectedProcedure
       })
       .where(eq(Note.id, input.id))
       .returning();
+    if (!note) throw errors.NOT_FOUND();
     return note;
   });

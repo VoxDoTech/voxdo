@@ -42,5 +42,6 @@ export const create = protectedProcedure
         status: "ready",
       })
       .returning();
+    if (!note) throw new Error("Note insert returned no row");
     return note;
   });
