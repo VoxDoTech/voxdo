@@ -13,6 +13,8 @@ export const list = protectedProcedure
   .input(
     z.object({
       folderId: z.uuid().optional(),
+      /** Only notes of this kind (voice recordings vs. typed notes). */
+      kind: z.enum(["voice", "text"]).optional(),
       /** Case-insensitive substring match on title + content. */
       q: z.string().max(200).optional(),
       limit: z.number().min(1).max(100).default(50),
@@ -28,6 +30,7 @@ export const list = protectedProcedure
       where: and(
         eq(Note.userId, context.session.user.id),
         input.folderId ? eq(Note.folderId, input.folderId) : undefined,
+        input.kind ? eq(Note.kind, input.kind) : undefined,
         pattern
           ? or(ilike(Note.title, pattern), ilike(Note.content, pattern))
           : undefined,
