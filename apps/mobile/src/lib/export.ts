@@ -4,6 +4,17 @@ import { formatClock, formatFull, noteTitle } from "./format";
 
 export type ExportResult = "shared" | "copied" | "downloaded";
 
+/**
+ * The share sheet refused because the user activation expired while notes were
+ * being fetched. The caller can retry `shareNotes` on the next tap.
+ */
+export class ShareActivationError extends Error {
+  constructor() {
+    super("Share activation expired");
+    this.name = "ShareActivationError";
+  }
+}
+
 /** Every note, paginated in batches of 100 until the last short page. */
 export async function fetchAllNotes(): Promise<Note[]> {
   const all: Note[] = [];
@@ -47,10 +58,11 @@ export async function shareNotes(notes: Note[]): Promise<ExportResult> {
       });
       return "shared";
     } catch (cause) {
-      // A user cancellation stays silent; anything else (e.g. the share
-      // gesture timed out during a slow export) falls back below.
-      if (cause instanceof DOMException && cause.name === "AbortError") {
-        throw cause;
+      // A user cancellation stays silent; an expired activation asks for one
+      // more tap (the caller keeps the notes), and anything else falls back.
+      if (cause instanceof DOMException) {
+        if (cause.name === "AbortError") throw cause;
+        if (cause.name === "NotAllowedError") throw new ShareActivationError();
       }
     }
   }

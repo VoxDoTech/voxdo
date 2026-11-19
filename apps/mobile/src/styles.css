@@ -20,7 +20,14 @@
   --mint: #3fe0ab;
   --danger: #ff6479;
   --warn: #ffc857;
+  --mint-text: #3fe0ab;
+  --cyan-text: #37c9ff;
+  --danger-text: #ff6479;
+  --warn-text: #ffc857;
+  --danger-solid: #d92b46;
   --grad: linear-gradient(135deg, #7b6cff 0%, #37c9ff 100%);
+  /* Same accent direction, darkened so white text keeps 4.5:1 contrast. */
+  --grad-text: linear-gradient(135deg, #5a4bd8 0%, #127da8 100%);
   --grad-warm: linear-gradient(135deg, #ff5f7e 0%, #ff9c5c 100%);
   --grad-soft: linear-gradient(
     135deg,
@@ -45,8 +52,12 @@ html[data-theme="light"] {
   --border-strong: rgba(18, 22, 48, 0.16);
   --text: #12152a;
   --text-soft: #40465c;
-  --muted: #767e95;
-  --accent-soft: #6a5cf0;
+  --muted: #5f677d;
+  --accent-soft: #5a4bd8;
+  --mint-text: #0f7a5a;
+  --cyan-text: #0b6f8f;
+  --danger-text: #b3243c;
+  --warn-text: #8a5a00;
   --grad-soft: linear-gradient(
     135deg,
     rgba(123, 108, 255, 0.14),
@@ -216,7 +227,7 @@ select:focus-visible {
   flex: none;
   border: none;
   border-radius: 12px;
-  background: var(--grad);
+  background: var(--grad-text);
   color: #fff;
   font-size: 0.8rem;
   font-weight: 700;
@@ -445,7 +456,7 @@ html[data-theme="light"] .dock {
 }
 
 .btn-primary {
-  background: var(--grad);
+  background: var(--grad-text);
   color: #fff;
   box-shadow: 0 10px 30px rgba(93, 86, 255, 0.35);
 }
@@ -457,9 +468,9 @@ html[data-theme="light"] .dock {
 }
 
 .btn-danger {
-  background: var(--danger);
+  background: var(--danger-solid);
   color: #fff;
-  box-shadow: 0 10px 26px rgba(255, 100, 121, 0.3);
+  box-shadow: 0 10px 26px rgba(217, 43, 70, 0.3);
 }
 
 .btn-compact {
@@ -485,7 +496,7 @@ html[data-theme="light"] .dock {
 }
 
 .danger-text {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .btn-icon {
@@ -515,12 +526,12 @@ html[data-theme="light"] .dock {
 }
 
 .btn-icon.danger {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .btn-icon.danger.armed {
   border-color: transparent;
-  background: var(--danger);
+  background: var(--danger-solid);
   color: #fff;
 }
 
@@ -688,7 +699,7 @@ textarea {
 
 .chip.active {
   border-color: transparent;
-  background: var(--grad);
+  background: var(--grad-text);
   color: #fff;
   box-shadow: 0 6px 18px rgba(93, 86, 255, 0.3);
 }
@@ -901,22 +912,22 @@ textarea {
 
 .badge.voice {
   background: rgba(63, 224, 171, 0.12);
-  color: var(--mint);
+  color: var(--mint-text);
 }
 
 .badge.folder {
   background: rgba(55, 201, 255, 0.1);
-  color: var(--cyan);
+  color: var(--cyan-text);
 }
 
 .badge.processing {
   background: rgba(255, 200, 87, 0.1);
-  color: var(--warn);
+  color: var(--warn-text);
 }
 
 .badge.error {
   background: rgba(255, 100, 121, 0.1);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .badge.kind {
@@ -1050,7 +1061,7 @@ textarea {
   border: 1px solid rgba(255, 100, 121, 0.25);
   border-radius: 14px;
   background: rgba(255, 100, 121, 0.09);
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 0.84rem;
   line-height: 1.4;
 }
@@ -1232,7 +1243,7 @@ textarea {
 }
 
 .record-status.error {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .record-wave {
@@ -1450,11 +1461,11 @@ textarea {
 }
 
 .save-state.error {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .save-state.saved {
-  color: var(--mint);
+  color: var(--mint-text);
 }
 
 .detail-footer .btn {
@@ -1682,7 +1693,7 @@ textarea {
   padding: 9px 12px;
   border-radius: 12px;
   background: rgba(255, 200, 87, 0.08);
-  color: var(--warn);
+  color: var(--warn-text);
   font-size: 0.77rem;
 }
 
@@ -1802,7 +1813,7 @@ html[data-theme="light"] .segment.active {
   margin-top: 4px;
   border-color: rgba(255, 100, 121, 0.25);
   background: rgba(255, 100, 121, 0.06);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .app-version {
@@ -1903,7 +1914,7 @@ html[data-theme="light"] .segment.active {
   border: 1px solid rgba(255, 100, 121, 0.24);
   border-radius: 12px;
   background: rgba(255, 100, 121, 0.09);
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 0.8rem;
   line-height: 1.35;
 }
@@ -1978,7 +1989,7 @@ html[data-theme="light"] .segment.active {
   border: 1px solid rgba(255, 100, 121, 0.25);
   border-radius: 20px;
   background: rgba(255, 100, 121, 0.1);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .splash-dots {
@@ -2133,7 +2144,7 @@ html[data-theme="light"] .sheet-backdrop {
 
 .sheet-note {
   margin: 2px 2px 0;
-  color: var(--warn);
+  color: var(--warn-text);
   font-size: 0.74rem;
 }
 
@@ -2246,12 +2257,12 @@ html[data-theme="light"] .toast {
 
 .toast-success .toast-icon {
   background: rgba(63, 224, 171, 0.12);
-  color: var(--mint);
+  color: var(--mint-text);
 }
 
 .toast-error .toast-icon {
   background: rgba(255, 100, 121, 0.12);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .toast-info .toast-icon {

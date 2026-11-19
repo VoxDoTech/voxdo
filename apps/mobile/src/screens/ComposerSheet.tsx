@@ -27,9 +27,11 @@ export function ComposerSheet({
   const [folderId, setFolderId] = useState<string | null>(initialFolderId);
   const [busy, setBusy] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const generationRef = useRef(0);
 
   useEffect(() => {
     if (!open) return;
+    generationRef.current += 1;
     setTitle("");
     setContent("");
     setFolderId(initialFolderId);
@@ -41,6 +43,7 @@ export function ComposerSheet({
   const create = async () => {
     if (busy) return;
     if (!title.trim() && !content.trim()) return;
+    const generation = generationRef.current;
     setBusy(true);
     try {
       const note = await api.note.create({
@@ -48,16 +51,20 @@ export function ComposerSheet({
         content: content.trim(),
         folderId: folderId ?? undefined,
       });
-      toast.show("Заметка создана", "success");
+      // Always report the created note; only the run that still owns the
+      // sheet may close it, show a toast or clear its busy state.
       onCreated(note);
+      if (generationRef.current !== generation) return;
+      toast.show("Заметка создана", "success");
       onClose();
     } catch (error) {
+      if (generationRef.current !== generation) return;
       toast.show(
         error instanceof Error ? error.message : "Не удалось создать заметку",
         "error",
       );
     } finally {
-      setBusy(false);
+      if (generationRef.current === generation) setBusy(false);
     }
   };
 

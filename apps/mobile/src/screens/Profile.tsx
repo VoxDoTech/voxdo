@@ -1,10 +1,11 @@
 import type { RouterOutputs } from "@acme/api";
 import { useEffect, useState } from "react";
+import type { Note } from "../App";
 import { Icon, type IconName } from "../components/Icon";
 import { useToast } from "../components/Toast";
 import type { SessionUser } from "../lib/api";
 import { api, signOut } from "../lib/api";
-import { fetchAllNotes, shareNotes } from "../lib/export";
+import { fetchAllNotes, ShareActivationError, shareNotes } from "../lib/export";
 import { initials } from "../lib/format";
 import type { ThemeMode } from "../lib/theme";
 
@@ -33,6 +34,7 @@ export function ProfileScreen({
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [pendingNotes, setPendingNotes] = useState<Note[] | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -59,13 +61,15 @@ export function ProfileScreen({
   const exportNotes = async () => {
     if (exporting) return;
     setExporting(true);
+    let notes = pendingNotes;
     try {
-      const notes = await fetchAllNotes();
+      notes ??= await fetchAllNotes();
       if (notes.length === 0) {
         toast.show("Пока нечего экспортировать", "info");
         return;
       }
       const result = await shareNotes(notes);
+      setPendingNotes(null);
       toast.show(
         result === "shared"
           ? "Экспорт готов"
@@ -76,6 +80,13 @@ export function ProfileScreen({
       );
     } catch (cause) {
       if (cause instanceof DOMException && cause.name === "AbortError") return;
+      if (cause instanceof ShareActivationError && notes) {
+        // The fetch outlived the tap's activation window: keep the loaded
+        // notes and let the next tap share them straight away.
+        setPendingNotes(notes);
+        toast.show("Файл готов — нажмите «Поделиться» ещё раз", "info");
+        return;
+      }
       toast.show("Не удалось экспортировать заметки", "error");
     } finally {
       setExporting(false);
@@ -200,14 +211,22 @@ export function ProfileScreen({
               {exporting ? (
                 <span className="spinner-ring small" />
               ) : (
-                <Icon name="download" size={18} />
+                <Icon name={pendingNotes ? "share" : "download"} size={18} />
               )}
             </span>
             <span className="row-action-text">
               <strong>
-                {exporting ? "Готовим экспорт…" : "Экспорт заметок"}
+                {exporting
+                  ? "Готовим экспорт…"
+                  : pendingNotes
+                    ? "Поделиться файлом"
+                    : "Экспорт заметок"}
               </strong>
-              <span>Markdown-файл со всеми записями</span>
+              <span>
+                {pendingNotes
+                  ? "Файл готов — нажмите, чтобы поделиться"
+                  : "Markdown-файл со всеми записями"}
+              </span>
             </span>
             <Icon name="chevronRight" size={16} />
           </button>
