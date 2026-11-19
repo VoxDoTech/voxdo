@@ -44,25 +44,34 @@ function notesToMarkdown(notes: Note[]): string {
 }
 
 /** Shares the notes as a Markdown file, falling back to clipboard/download. */
-export async function shareNotes(notes: Note[]): Promise<ExportResult> {
+export async function shareNotes(
+  notes: Note[],
+  allowActivationRetry = true,
+): Promise<ExportResult> {
   const markdown = notesToMarkdown(notes);
   const fileName = `voxdo-notes-${new Date().toISOString().slice(0, 10)}.md`;
   const file = new File([markdown], fileName, { type: "text/markdown" });
 
   if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: "VoxDo — заметки",
-        text: `${notes.length} заметок из VoxDo`,
-      });
-      return "shared";
-    } catch (cause) {
-      // A user cancellation stays silent; an expired activation asks for one
-      // more tap (the caller keeps the notes), and anything else falls back.
-      if (cause instanceof DOMException) {
-        if (cause.name === "AbortError") throw cause;
-        if (cause.name === "NotAllowedError") throw new ShareActivationError();
+    // Check before share(): the browser may consume activation even when it
+    // rejects for another reason, so checking after rejection is ambiguous.
+    const activationMissing = navigator.userActivation?.isActive === false;
+    if (activationMissing && allowActivationRetry) {
+      throw new ShareActivationError();
+    }
+    if (!activationMissing) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "VoxDo — заметки",
+          text: `${notes.length} заметок из VoxDo`,
+        });
+        return "shared";
+      } catch (cause) {
+        // Cancellation stays silent; permission/policy failures fall back.
+        if (cause instanceof DOMException && cause.name === "AbortError") {
+          throw cause;
+        }
       }
     }
   }

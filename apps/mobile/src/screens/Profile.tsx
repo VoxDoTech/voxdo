@@ -68,7 +68,7 @@ export function ProfileScreen({
         toast.show("Пока нечего экспортировать", "info");
         return;
       }
-      const result = await shareNotes(notes);
+      const result = await shareNotes(notes, pendingNotes === null);
       setPendingNotes(null);
       toast.show(
         result === "shared"
