@@ -15,6 +15,7 @@
  *   admin.users.*   – user management                          (admin)
  *   admin.stats.*   – system-wide statistics                   (admin)
  *   note.*          – voice/text notes (SecondBrain-style)     (protected)
+ *   note.stats      – note counters for the mobile profile      (protected)
  *   folder.*        – note folders                             (protected)
  */
 
