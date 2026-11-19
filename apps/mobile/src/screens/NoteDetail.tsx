@@ -26,11 +26,15 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [editSeq, setEditSeq] = useState(0);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [pollError, setPollError] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const titleTouched = useRef(false);
   const savingRef = useRef(false);
+  const pendingRef = useRef(false);
+  const waitersRef = useRef<((ok: boolean) => void)[]>([]);
   const latest = useRef({ title, content, folderId });
   latest.current = { title, content, folderId };
 
@@ -57,6 +61,7 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
       try {
         const fresh = await api.note.byId({ id: note.id });
         if (!active) return;
+        setPollError(false);
         setStatus(fresh.status);
         setErrorMessage(fresh.errorMessage);
         if (fresh.status !== "processing") {
@@ -70,7 +75,9 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
           );
         }
       } catch {
-        if (active) setStatus("error");
+        // A failed read says nothing about the transcription job: keep the
+        // last server-reported status and keep polling.
+        if (active) setPollError(true);
       }
     };
     const timer = setInterval(() => void tick(), 2500);
@@ -80,54 +87,90 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
     };
   }, [note.id, status, toast]);
 
-  const save = useCallback(async () => {
-    if (savingRef.current) return;
+  // Persist the latest edits. While a request is in flight, additional calls
+  // mark the queue dirty instead of racing; the running loop then saves the
+  // newest snapshot, and every caller awaits the same drained queue.
+  const flush = useCallback(async (): Promise<boolean> => {
+    if (savingRef.current) return true;
     savingRef.current = true;
-    setSaveState("saving");
-    const payload = {
-      title: title.trim() || null,
-      content,
-      folderId,
-    };
+    let ok = true;
     try {
-      await api.note.update({ id: note.id, ...payload });
-      const now = latest.current;
-      const unchanged =
-        (now.title.trim() || null) === payload.title &&
-        now.content === payload.content &&
-        now.folderId === payload.folderId;
-      if (unchanged) {
-        setDirty(false);
-        setSaveState("saved");
-      } else {
-        // Keep the newer edits marked dirty so the debounce saves again.
-        setSaveState("idle");
+      while (pendingRef.current) {
+        pendingRef.current = false;
+        const payload: {
+          title: string | null;
+          content?: string;
+          folderId: string | null;
+        } = {
+          title: latest.current.title.trim() || null,
+          folderId: latest.current.folderId,
+        };
+        // While transcription runs, don't send the stale local content — it
+        // would clobber the transcript the worker is about to write.
+        if (status !== "processing") payload.content = latest.current.content;
+        setSaveState("saving");
+        try {
+          await api.note.update({ id: note.id, ...payload });
+        } catch (cause) {
+          ok = false;
+          setSaveState("error");
+          toast.show(
+            cause instanceof Error ? cause.message : "Не удалось сохранить",
+            "error",
+          );
+          break;
+        }
+        const now = latest.current;
+        const unchanged =
+          (now.title.trim() || null) === payload.title &&
+          (payload.content === undefined || now.content === payload.content) &&
+          now.folderId === payload.folderId;
+        if (unchanged) {
+          setDirty(false);
+          setSaveState("saved");
+        } else {
+          // Newer edits arrived while the request ran — save them next.
+          pendingRef.current = true;
+        }
       }
-    } catch (cause) {
-      setSaveState("error");
-      toast.show(
-        cause instanceof Error ? cause.message : "Не удалось сохранить",
-        "error",
-      );
     } finally {
       savingRef.current = false;
+      const waiters = waitersRef.current;
+      waitersRef.current = [];
+      for (const resolve of waiters) resolve(ok);
     }
-  }, [content, folderId, note.id, title, toast]);
+    return ok;
+  }, [note.id, status, toast]);
 
-  // Debounced autosave; the explicit button stays as a fallback.
+  const save = useCallback((): Promise<boolean> => {
+    pendingRef.current = true;
+    const result = new Promise<boolean>((resolve) => {
+      waitersRef.current.push(resolve);
+    });
+    void flush();
+    return result;
+  }, [flush]);
+
+  // Debounced autosave; the explicit button stays as a fallback. `editSeq`
+  // re-arms the timer even when `dirty` is already true.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: editSeq is a deliberate debounce trigger
   useEffect(() => {
-    if (!dirty || status === "processing") return;
+    if (!dirty) return;
     const timer = setTimeout(() => void save(), 1100);
     return () => clearTimeout(timer);
-  }, [dirty, save, status]);
+  }, [dirty, editSeq, save]);
 
   const markDirty = () => {
     setDirty(true);
+    setEditSeq((seq) => seq + 1);
     setSaveState((current) => (current === "saving" ? current : "idle"));
   };
 
   const handleBack = async () => {
-    if (dirty && status !== "processing") await save();
+    if (dirty) {
+      const saved = await save();
+      if (!saved) return;
+    }
     onBack();
   };
 
@@ -240,7 +283,11 @@ export function NoteDetailScreen({ note, onBack, onDeleted }: Props) {
             <span className="spinner-ring small" />
             <div>
               <strong>Расшифровываем запись</strong>
-              <span>Обычно это занимает несколько секунд</span>
+              <span>
+                {pollError
+                  ? "Нет связи с сервером — продолжаем пытаться"
+                  : "Обычно это занимает несколько секунд"}
+              </span>
             </div>
           </div>
         )}
